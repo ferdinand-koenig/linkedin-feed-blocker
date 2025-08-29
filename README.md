@@ -31,7 +31,7 @@ This project is licensed under the [CC BY 4.0 License](https://creativecommons.o
    `chrome://extensions/`  
 3. Enable **Developer mode** (toggle in the top right).  
 4. Click **"Load unpacked"**.  
-5. Select the folder containing the extension files.  
+5. Select the subfolder containing the extension files.  
 
 ---
 
