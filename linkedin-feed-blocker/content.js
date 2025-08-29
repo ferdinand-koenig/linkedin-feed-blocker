@@ -1,6 +1,36 @@
-// === Config ===
-const BLOCK_MINUTES = 0.25;                // duration before blocking
-const LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
+// === Default Config ===
+let BLOCK_MINUTES = 3; // default in case storage fails
+let LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
+let timerId = null;
+
+// === Load setting from storage ===
+chrome.storage.sync.get({ blockMinutes: 3 }, data => {
+  BLOCK_MINUTES = parseFloat(data.blockMinutes);
+  LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
+
+  // If user set 0 → block immediately
+  if (BLOCK_MINUTES === 0) {
+    blockWhenReady();
+  } else if (/linkedin\.com\/.*feed/.test(location.href)) {
+    startOrRestartTimer();
+  }
+});
+
+// === Helper to get localized message ===
+function getBlockedMessage() {
+  const lang = navigator.language || navigator.userLanguage || 'en';
+
+  if (lang.startsWith('fr')) {
+    return `⏳ Tes ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutes sont écoulées.<br/>Ferme le feed et retourne à tes tâches ! 🚀`;
+  }
+  if (lang.startsWith('de')) {
+    return `⏳ Deine ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} Minuten sind vorbei.<br/>Schließe den Feed und widme dich wieder deinen Aufgaben! 🚀`;
+  }
+  if (lang.startsWith('es')) {
+    return `⏳ Tus ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutos han terminado.<br/>Cierra el feed y vuelve a tus tareas! 🚀`;
+  }
+  return `⏳ Your ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutes are up.<br/>Close the feed and get back to work! 🚀`;
+}
 
 // === Replace feed with message ===
 function replaceFeed() {
@@ -15,13 +45,27 @@ function replaceFeed() {
     if (feed) {
       feed.innerHTML = `
         <div style="
-          font-size:24px;
-          text-align:center;
-          margin-top:50px;
-          color:#555;
+          position: relative;
+          height: 100vh;  /* viewport height */
+          width: 100%;
+          text-align: center;
+          color: #555;
+          font-size: 24px;
         ">
-          ⏳ Tes ${BLOCK_MINUTES} minutes sont écoulées.<br/>
-          Ferme le feed et retourne à tes tâches ! 🚀
+          <div style="
+            position: absolute;
+            top: 10vh;      /* 10% from top of viewport */
+            width: 100%;
+          ">
+            ${getBlockedMessage()}
+          </div>
+          <div style="
+            position: absolute;
+            bottom: -20vh;   /* 10% from bottom of viewport */
+            width: 100%;
+          ">
+            ${getBlockedMessage()}
+          </div>
         </div>
       `;
       return true;
@@ -43,8 +87,6 @@ function blockWhenReady() {
 }
 
 // Timer logic
-let timerId = null;
-
 function startOrRestartTimer() {
   clearTimeout(timerId);
   timerId = setTimeout(() => {
@@ -79,13 +121,17 @@ function stopTimer() {
 window.addEventListener("locationchange", () => {
   const isFeed = /linkedin\.com\/.*feed/.test(location.href);
   if (isFeed) {
-    startOrRestartTimer();
+    if (BLOCK_MINUTES === 0) {
+      blockWhenReady();
+    } else {
+      startOrRestartTimer();
+    }
   } else {
     stopTimer();
   }
 });
 
 // Start immediately if already on feed
-if (/linkedin\.com\/.*feed/.test(location.href)) {
+if (/linkedin\.com\/.*feed/.test(location.href) && BLOCK_MINUTES !== 0) {
   startOrRestartTimer();
 }

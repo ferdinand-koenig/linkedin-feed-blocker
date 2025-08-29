@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LinkedIn Feed Blocker Settings</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f9f9f9;
+      color: #333;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2 {
+      color: #2a7ecf; /* safe, medium blue */
+      margin-bottom: 20px;
+    }
+
+    .slider-container {
+      width: 300px;
+      margin-bottom: 20px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .value-display {
+      text-align: center;
+      font-weight: bold;
+      margin-top: 5px;
+      font-size: 18px;
+      color: #2a7ecf; /* same medium blue for consistency */
+    }
+
+    button {
+      background-color: #2a7ecf; /* safe medium blue */
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1b5fa5; /* darker shade of the same blue */
+    }
+
+    #status {
+      margin-top: 15px;
+      color: green;
+      font-weight: bold;
+    }
+
+    small {
+      display: block;
+      text-align: center;
+      margin-top: 5px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h2>Feed Blocker Settings</h2>
+  <div class="slider-container">
+    <label for="minutes">Minutes before blocking:</label>
+    <input type="range" id="minutes" min="0" max="20" step="0.25">
+    <div class="value-display" id="value-display">3.0 min</div>
+    <small>Set 0 for immediate blocking</small>
+  </div>
+  <button id="save">Save</button>
+  <p id="status"></p>
+
+  <script src="options.js"></script>
+</body>
+</html>
