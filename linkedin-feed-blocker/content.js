@@ -18,7 +18,8 @@ chrome.storage.sync.get({ blockMinutes: 3 }, data => {
 
 // === Helpers ===
 function isOnFeed() {
-  return /linkedin\.com\/.*feed/.test(location.href);
+  // Match exactly https://www.linkedin.com/feed/ or with optional trailing slash
+  return /^https:\/\/www\.linkedin\.com\/feed\/?$/.test(location.href);
 }
 
 function getBlockedMessage() {
