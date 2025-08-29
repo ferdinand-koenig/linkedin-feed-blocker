@@ -1,137 +1,107 @@
 // === Default Config ===
-let BLOCK_MINUTES = 3; // default in case storage fails
+let BLOCK_MINUTES = 3;
 let LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
 let timerId = null;
+let lastHref = location.href;
 
 // === Load setting from storage ===
 chrome.storage.sync.get({ blockMinutes: 3 }, data => {
   BLOCK_MINUTES = parseFloat(data.blockMinutes);
   LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
 
-  // If user set 0 → block immediately
-  if (BLOCK_MINUTES === 0) {
+  if (BLOCK_MINUTES === 0 && isOnFeed()) {
     blockWhenReady();
-  } else if (/linkedin\.com\/.*feed/.test(location.href)) {
+  } else if (isOnFeed()) {
     startOrRestartTimer();
   }
 });
 
-// === Helper to get localized message ===
+// === Helpers ===
+function isOnFeed() {
+  return /linkedin\.com\/.*feed/.test(location.href);
+}
+
 function getBlockedMessage() {
   const lang = navigator.language || navigator.userLanguage || 'en';
-
-  if (lang.startsWith('fr')) {
-    return `⏳ Tes ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutes sont écoulées.<br/>Ferme le feed et retourne à tes tâches ! 🚀`;
-  }
-  if (lang.startsWith('de')) {
-    return `⏳ Deine ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} Minuten sind vorbei.<br/>Schließe den Feed und widme dich wieder deinen Aufgaben! 🚀`;
-  }
-  if (lang.startsWith('es')) {
-    return `⏳ Tus ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutos han terminado.<br/>Cierra el feed y vuelve a tus tareas! 🚀`;
-  }
-  return `⏳ Your ${BLOCK_MINUTES === 0 ? "0" : BLOCK_MINUTES} minutes are up.<br/>Close the feed and get back to work! 🚀`;
+  if (lang.startsWith('fr')) return `⏳ Tes ${BLOCK_MINUTES} minutes sont écoulées.<br/>Ferme le feed et retourne à tes tâches ! 🚀`;
+  if (lang.startsWith('de')) return `⏳ Deine ${BLOCK_MINUTES} Minuten sind vorbei.<br/>Schließe den Feed und widme dich wieder deinen Aufgaben! 🚀`;
+  if (lang.startsWith('es')) return `⏳ Tus ${BLOCK_MINUTES} minutos han terminado.<br/>Cierra el feed y vuelve a tus tareas! 🚀`;
+  return `⏳ Your ${BLOCK_MINUTES} minutes are up.<br/>Close the feed and get back to work! 🚀`;
 }
 
-// === Replace feed with message ===
 function replaceFeed() {
-  const feedSelectors = [
-    "main",
-    ".scaffold-finite-scroll__content",
-    "[data-test-feed-update-list]"
-  ];
+  const feed = document.querySelector("main, .scaffold-finite-scroll__content, [data-test-feed-update-list]");
+  if (!feed) return false;
 
-  for (const selector of feedSelectors) {
-    const feed = document.querySelector(selector);
-    if (feed) {
-      feed.innerHTML = `
-        <div style="
-          position: relative;
-          height: 100vh;  /* viewport height */
-          width: 100%;
-          text-align: center;
-          color: #555;
-          font-size: 24px;
-        ">
-          <div style="
-            position: absolute;
-            top: 10vh;      /* 10% from top of viewport */
-            width: 100%;
-          ">
-            ${getBlockedMessage()}
-          </div>
-          <div style="
-            position: absolute;
-            bottom: -20vh;   /* 10% from bottom of viewport */
-            width: 100%;
-          ">
-            ${getBlockedMessage()}
-          </div>
-        </div>
-      `;
-      return true;
-    }
-  }
-  return false;
+  feed.innerHTML = `
+    <div style="
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      text-align: center;
+      color: #555;
+      font-size: 24px;
+    ">
+      <div style="position: absolute; top: 10vh; width: 100%;">${getBlockedMessage()}</div>
+      <div style="position: absolute; bottom: -20vh; width: 100%;">${getBlockedMessage()}</div>
+    </div>
+  `;
+  return true;
 }
 
-// Wait until feed exists then replace
 function blockWhenReady() {
   if (replaceFeed()) return;
 
-  const mo = new MutationObserver(() => {
-    if (replaceFeed()) mo.disconnect();
-  });
+  const mo = new MutationObserver(() => { if (replaceFeed()) mo.disconnect(); });
   mo.observe(document.documentElement, { childList: true, subtree: true });
-
-  setTimeout(() => mo.disconnect(), 10_000);
+  setTimeout(() => mo.disconnect(), 10000);
 }
 
-// Timer logic
 function startOrRestartTimer() {
   clearTimeout(timerId);
-  timerId = setTimeout(() => {
+  if (BLOCK_MINUTES === 0) {
     blockWhenReady();
-  }, LIMIT_MS);
+    return;
+  }
+  timerId = setTimeout(blockWhenReady, LIMIT_MS);
 }
 
 function stopTimer() {
   clearTimeout(timerId);
 }
 
-// === SPA navigation detection (no polling) ===
+// === Handle feed tab ===
+function handleFeedTab() {
+  if (BLOCK_MINUTES === 0) {
+    blockWhenReady();
+  } else {
+    startOrRestartTimer();
+  }
+}
+
+// === SPA navigation detection ===
 (function() {
   const _pushState = history.pushState;
-  history.pushState = function() {
-    _pushState.apply(this, arguments);
-    window.dispatchEvent(new Event("locationchange"));
-  };
-
+  history.pushState = function() { _pushState.apply(this, arguments); window.dispatchEvent(new Event("locationchange")); };
   const _replaceState = history.replaceState;
-  history.replaceState = function() {
-    _replaceState.apply(this, arguments);
-    window.dispatchEvent(new Event("locationchange"));
-  };
-
-  window.addEventListener("popstate", () => {
-    window.dispatchEvent(new Event("locationchange"));
-  });
+  history.replaceState = function() { _replaceState.apply(this, arguments); window.dispatchEvent(new Event("locationchange")); };
+  window.addEventListener("popstate", () => window.dispatchEvent(new Event("locationchange")));
 })();
 
-// React to URL changes
+// React to SPA URL changes
 window.addEventListener("locationchange", () => {
-  const isFeed = /linkedin\.com\/.*feed/.test(location.href);
-  if (isFeed) {
-    if (BLOCK_MINUTES === 0) {
-      blockWhenReady();
-    } else {
-      startOrRestartTimer();
-    }
-  } else {
-    stopTimer();
-  }
+  if (isOnFeed()) handleFeedTab();
+  else stopTimer();
 });
 
 // Start immediately if already on feed
-if (/linkedin\.com\/.*feed/.test(location.href) && BLOCK_MINUTES !== 0) {
-  startOrRestartTimer();
-}
+if (isOnFeed()) handleFeedTab();
+
+// === Poll for tab changes (works for internal LinkedIn tabs) ===
+setInterval(() => {
+  if (location.href !== lastHref) {
+    lastHref = location.href;
+    if (isOnFeed()) handleFeedTab();
+    else stopTimer();
+  }
+}, 500);
