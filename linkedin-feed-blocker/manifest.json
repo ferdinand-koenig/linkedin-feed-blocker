@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Feed Blocker",
+  "version": "1.1",
+  "description": "Bloque le fil LinkedIn après 3 minutes",
+  "author": "Ferdinand Koenig",
+  "permissions": [],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/feed*", "https://www.linkedin.com/*feed*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}
