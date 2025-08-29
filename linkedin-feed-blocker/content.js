@@ -1,13 +1,9 @@
 // === Config ===
-const LIMIT_MS = 0.25 * 60 * 1000; // 3 minutes
-const POLL_MS = 1000;
+const BLOCK_MINUTES = 0.25;                // duration before blocking
+const LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
 
-// === Utils ===
-const log = (...a) => console.log("[FeedBlocker]", ...a);
-
+// === Replace feed with message ===
 function replaceFeed() {
-  log("Essai de remplacement du feed…");
-
   const feedSelectors = [
     "main",
     ".scaffold-finite-scroll__content",
@@ -17,7 +13,6 @@ function replaceFeed() {
   for (const selector of feedSelectors) {
     const feed = document.querySelector(selector);
     if (feed) {
-      log(`Feed trouvé avec le sélecteur '${selector}', remplacement…`);
       feed.innerHTML = `
         <div style="
           font-size:24px;
@@ -25,7 +20,8 @@ function replaceFeed() {
           margin-top:50px;
           color:#555;
         ">
-          ⏳ Tes 3 minutes sont écoulées. Ferme le feed et retourne à tes tâches ! 🚀
+          ⏳ Tes ${BLOCK_MINUTES} minutes sont écoulées.<br/>
+          Ferme le feed et retourne à tes tâches ! 🚀
         </div>
       `;
       return true;
@@ -34,58 +30,62 @@ function replaceFeed() {
   return false;
 }
 
-// Attend que le feed existe puis remplace
+// Wait until feed exists then replace
 function blockWhenReady() {
   if (replaceFeed()) return;
 
-  // Si pas encore là, observe le DOM jusqu'à ce que le feed apparaisse
   const mo = new MutationObserver(() => {
     if (replaceFeed()) mo.disconnect();
   });
   mo.observe(document.documentElement, { childList: true, subtree: true });
 
-  // Sécurité: arrêter l'observer après 10s pour éviter les fuites
   setTimeout(() => mo.disconnect(), 10_000);
 }
 
-// Démarre un compte à rebours, le réinitialise si on quitte le feed
+// Timer logic
 let timerId = null;
-let lastHref = location.href;
 
 function startOrRestartTimer() {
   clearTimeout(timerId);
-  log("Démarrage du minuteur de 3 minutes…");
   timerId = setTimeout(() => {
-    log("Minuteur terminé, blocage du feed.");
     blockWhenReady();
   }, LIMIT_MS);
 }
 
-// Sur SPA, détecter les changements d’URL
-setInterval(() => {
-  if (location.href !== lastHref) {
-    const wasFeed = /linkedin\.com\/.*feed/.test(lastHref);
-    const isFeed = /linkedin\.com\/.*feed/.test(location.href);
-    lastHref = location.href;
+function stopTimer() {
+  clearTimeout(timerId);
+}
 
-    if (isFeed) {
-      log("Arrivée sur le feed -> (re)lancer le minuteur.");
-      startOrRestartTimer();
-    } else if (wasFeed) {
-      log("Sortie du feed -> arrêter le minuteur.");
-      clearTimeout(timerId);
-    }
+// === SPA navigation detection (no polling) ===
+(function() {
+  const _pushState = history.pushState;
+  history.pushState = function() {
+    _pushState.apply(this, arguments);
+    window.dispatchEvent(new Event("locationchange"));
+  };
+
+  const _replaceState = history.replaceState;
+  history.replaceState = function() {
+    _replaceState.apply(this, arguments);
+    window.dispatchEvent(new Event("locationchange"));
+  };
+
+  window.addEventListener("popstate", () => {
+    window.dispatchEvent(new Event("locationchange"));
+  });
+})();
+
+// React to URL changes
+window.addEventListener("locationchange", () => {
+  const isFeed = /linkedin\.com\/.*feed/.test(location.href);
+  if (isFeed) {
+    startOrRestartTimer();
+  } else {
+    stopTimer();
   }
-}, POLL_MS);
+});
 
-// Lancer au chargement si on est déjà sur le feed
+// Start immediately if already on feed
 if (/linkedin\.com\/.*feed/.test(location.href)) {
   startOrRestartTimer();
 }
-
-// Bonus: si l’onglet est masqué trop longtemps, on bloque à la reprise
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" &&
-      /linkedin\.com\/.*feed/.test(location.href)) {
-  }
-});
