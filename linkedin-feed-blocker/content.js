@@ -1,24 +1,16 @@
-// === Default Config ===
 let BLOCK_MINUTES = 3;
 let LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
 let timerId = null;
+let feedObserver = null;
 let lastHref = location.href;
 
-// === Load setting from storage ===
 chrome.storage.sync.get({ blockMinutes: 3 }, data => {
   BLOCK_MINUTES = parseFloat(data.blockMinutes);
   LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
-
-  if (BLOCK_MINUTES === 0 && isOnFeed()) {
-    blockWhenReady();
-  } else if (isOnFeed()) {
-    startOrRestartTimer();
-  }
+  handleFeedTab();
 });
 
-// === Helpers ===
 function isOnFeed() {
-  // Match exactly https://www.linkedin.com/feed/ or with optional trailing slash
   return /^https:\/\/www\.linkedin\.com\/feed\/?$/.test(location.href);
 }
 
@@ -53,9 +45,10 @@ function replaceFeed() {
 function blockWhenReady() {
   if (replaceFeed()) return;
 
-  const mo = new MutationObserver(() => { if (replaceFeed()) mo.disconnect(); });
-  mo.observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(() => mo.disconnect(), 10000);
+  if (!feedObserver) {
+    feedObserver = new MutationObserver(() => replaceFeed());
+    feedObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
 }
 
 function startOrRestartTimer() {
@@ -71,16 +64,12 @@ function stopTimer() {
   clearTimeout(timerId);
 }
 
-// === Handle feed tab ===
 function handleFeedTab() {
-  if (BLOCK_MINUTES === 0) {
-    blockWhenReady();
-  } else {
-    startOrRestartTimer();
-  }
+  if (BLOCK_MINUTES === 0) blockWhenReady();
+  else startOrRestartTimer();
 }
 
-// === SPA navigation detection ===
+// SPA detection
 (function() {
   const _pushState = history.pushState;
   history.pushState = function() { _pushState.apply(this, arguments); window.dispatchEvent(new Event("locationchange")); };
@@ -89,16 +78,12 @@ function handleFeedTab() {
   window.addEventListener("popstate", () => window.dispatchEvent(new Event("locationchange")));
 })();
 
-// React to SPA URL changes
 window.addEventListener("locationchange", () => {
   if (isOnFeed()) handleFeedTab();
   else stopTimer();
 });
 
-// Start immediately if already on feed
-if (isOnFeed()) handleFeedTab();
-
-// === Poll for tab changes (works for internal LinkedIn tabs) ===
+// Poll for tab changes (internal LinkedIn tabs)
 setInterval(() => {
   if (location.href !== lastHref) {
     lastHref = location.href;
@@ -106,3 +91,6 @@ setInterval(() => {
     else stopTimer();
   }
 }, 500);
+
+// Start immediately if already on feed
+if (isOnFeed()) handleFeedTab();
