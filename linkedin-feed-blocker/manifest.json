@@ -5,14 +5,14 @@
   "description": "Blocks the LinkedIn feed after a configurable number of minutes",
   "author": "Ferdinand Koenig",
   "permissions": ["storage"],
-  "options_page": "options.html",
   "host_permissions": ["https://www.linkedin.com/*"],
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/feed*", "https://www.linkedin.com/*feed*"],
+      "matches": ["https://www.linkedin.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle",
-      "all_frames": true
+      "all_frames": false
     }
-  ]
+  ],
+  "options_page": "options.html"
 }

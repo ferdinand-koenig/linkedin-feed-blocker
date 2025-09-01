@@ -52,9 +52,9 @@ function replaceFeed() {
 // ------------------ Timer & Observer ------------------
 
 function blockWhenReady() {
-  if (replaceFeed()) return;
-
-  if (!feedObserver) {
+  const replaced = replaceFeed();
+  if (!replaced && !feedObserver) {
+    // Feed not ready yet? Watch for it
     feedObserver = new MutationObserver(() => replaceFeed());
     feedObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -79,8 +79,14 @@ function stopTimer() {
 }
 
 function handleFeedTab() {
-  if (BLOCK_MINUTES === 0) blockWhenReady();
-  else startOrRestartTimer();
+  stopTimer();
+
+  if (BLOCK_MINUTES === 0) {
+    blockWhenReady(); // block immediately if 0
+    return;
+  }
+
+  startOrRestartTimer(); // schedule the block after LIMIT_MS
 }
 
 // ------------------ SPA Detection ------------------
@@ -94,15 +100,14 @@ function handleFeedTab() {
 })();
 
 window.addEventListener("locationchange", () => {
-  // Always update lastHref first
   const currentHref = location.href;
   if (currentHref === lastHref) return;
   lastHref = currentHref;
 
+  stopTimer(); // always stop previous timer/observer
+
   if (isOnFeed()) {
-    handleFeedTab();
-  } else {
-    stopTimer();
+    handleFeedTab(); // restart timer + observer for new feed view
   }
 });
 
