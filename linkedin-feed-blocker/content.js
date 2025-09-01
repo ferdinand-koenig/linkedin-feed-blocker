@@ -94,8 +94,16 @@ function handleFeedTab() {
 })();
 
 window.addEventListener("locationchange", () => {
-  if (isOnFeed()) handleFeedTab();
-  else stopTimer();
+  // Always update lastHref first
+  const currentHref = location.href;
+  if (currentHref === lastHref) return;
+  lastHref = currentHref;
+
+  if (isOnFeed()) {
+    handleFeedTab();
+  } else {
+    stopTimer();
+  }
 });
 
 // ------------------ Poll for Tab Changes ------------------
