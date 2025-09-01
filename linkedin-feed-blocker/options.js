@@ -3,7 +3,7 @@ const valueDisplay = document.getElementById("value-display");
 const status = document.getElementById("status");
 
 // Load saved value from storage
-chrome.storage.sync.get({ blockMinutes: 3 }, data => {
+chrome.storage.sync.get({ blockMinutes: 1 }, data => {
   minutesInput.value = data.blockMinutes;
   valueDisplay.textContent = formatMinutes(data.blockMinutes);
   adjustStep(data.blockMinutes);

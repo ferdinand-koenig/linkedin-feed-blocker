@@ -1,11 +1,11 @@
-let BLOCK_MINUTES = 3;
+let BLOCK_MINUTES = 1;
 let LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
 let timerId = null;
 let feedObserver = null;
 let lastHref = location.href;
 
 // Load block minutes from storage
-chrome.storage.sync.get({ blockMinutes: 3 }, data => {
+chrome.storage.sync.get({ blockMinutes: 1 }, data => {
   BLOCK_MINUTES = parseFloat(data.blockMinutes);
   LIMIT_MS = BLOCK_MINUTES * 60 * 1000;
   handleFeedTab();
