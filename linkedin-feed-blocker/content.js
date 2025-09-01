@@ -12,25 +12,11 @@ chrome.storage.sync.get({ blockMinutes: 3 }, data => {
 });
 
 // ------------------ Feed Detection ------------------
-
-function isOwnPost() {
-  const post = document.querySelector("div[data-urn^='urn:li:activity']");
-  if (!post) return false;
-  const actor = post.getAttribute("data-actor") || "";
-  // Replace with your LinkedIn ID
-  return actor.includes("YOUR_LINKEDIN_ID");
-}
-
 function isOnFeed() {
   const url = new URL(location.href);
 
   // Main feed
-  if (url.pathname === '/feed/' || url.pathname === '/feed') return true;
-
-  // Individual post from others (not your own)
-  if (url.pathname.startsWith('/feed/update/') && !isOwnPost()) return true;
-
-  return false;
+  return (url.pathname === '/feed/' || url.pathname === '/feed');
 }
 
 // ------------------ Block Message ------------------
